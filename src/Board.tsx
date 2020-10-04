@@ -14,7 +14,9 @@ export class Board extends PureComponent{
     render() : Component{
         const status = 'Next player: X';
         return (
-          <div>
+          <div onClick={function click() {
+            console.log("buntton clicked")
+          }}>
             <div className="status">{status}</div>
             <div className="board-row">
               {this.renderSquare(0)}

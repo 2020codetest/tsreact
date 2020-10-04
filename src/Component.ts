@@ -1,17 +1,23 @@
+import { MyReact } from "./MyReact";
+import * as ReactEvent from "./ReactEvent"
+
 export interface VNode{
     type: string;
     content?: string;
-    props?: {[index: string]: string};
+    props?: {[index: string]: any};
     children: Component[];
 }
 
 export interface Component {
     render() : Component;
-    flush(range: Range) : void;
+    flush(parentNode: Node) : Node;
+    update(): void;
 }
 
 export class TextWrapper implements Component{
     root: VNode;
+    node: Node;
+    parentNode: Node;
     constructor(content: string){
         this.root = {
             type: "#text",
@@ -20,9 +26,22 @@ export class TextWrapper implements Component{
         }
     }
 
-    flush(range: Range): void {
+    flush(parentNode: Node) :Node{
         let text = document.createTextNode(this.root.content)
-        range.insertNode(text)
+        if (this.node){
+            parentNode.replaceChild(text, this.node)
+        }
+        else{
+            parentNode.appendChild(text)
+        }
+
+        this.parentNode = parentNode;
+        this.node = text
+        return text
+    }
+
+    update(): void{
+        this.flush(this.parentNode)
     }
 
     render(): Component {
@@ -32,7 +51,9 @@ export class TextWrapper implements Component{
 
 export class ElementWrapper implements Component {
     root: VNode;
-    childRange: Range;
+    node: Node;
+    parentNode: Node;
+    state: {[index: string]: any};
     constructor(type: string, props: {[index: string]: string} | undefined, children: Component[]){
         this.root = {
             type: type,
@@ -49,10 +70,36 @@ export class ElementWrapper implements Component {
         }
     }
 
-    flush(range: Range): void {
+    update(): void {
+        this.flush(this.parentNode)
+    }
+
+    setState(state: {[index: string]: any}): void {
+        if (!this.state){
+            this.state = state
+        }
+        else{
+            for (let key in state){
+                this.state[key] = state[key]
+            }
+        }
+
+        this.update()
+    }
+
+    flush(parentNode: Node): Node {
+        this.parentNode = parentNode
         if (this.root.type === "#custom"){
             let ele = this.render()
-            ele.flush(range)
+            let node = ele.flush(parentNode)
+            if (this.node){
+                this.parentNode.replaceChild(node, this.node)
+            }
+            else{
+                this.parentNode.appendChild(node)
+            }
+
+            this.node = node
         }
         else{
             let node = document.createElement(this.root.type)
@@ -62,21 +109,34 @@ export class ElementWrapper implements Component {
                     if ('classname' == key.toLowerCase()){
                         key = 'class'
                     }
+                    else if (key.match(/^on([\s\S]+)/)){
+                        let event = key.substr(2).toLowerCase()
+                        ReactEvent.registerEvent(event, {node: node, callback: this.root.props[key]})
+                    }
 
                     node.setAttribute(key, value)
                 }
             }
-            range.insertNode(node)
+
             if (this.root.children && this.root.children.length){
-                this.childRange = document.createRange()
                 let i = 0
                 for (let child of this.root.children){
-                    this.childRange.setStart(node, i)
-                    child.flush(this.childRange)
+                    child.flush(node)
                     ++i
                 }
             }
+
+            if (this.node){
+                this.parentNode.replaceChild(node, this.node)
+            }
+            else{
+                this.parentNode.appendChild(node)
+            }
+
+            this.node = node
         }
+
+        return this.node
     }
 
     render(): Component {
@@ -87,5 +147,5 @@ export class ElementWrapper implements Component {
 export class PureComponent extends ElementWrapper{
     constructor(props: {[index: string]: any} | undefined, children: Component[]){
         super("#custom", props, children)
-    }  
+    } 
 }

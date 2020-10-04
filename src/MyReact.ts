@@ -2,9 +2,7 @@ import { Component, ElementWrapper, TextWrapper } from "./Component"
 
 export const MyReact = {
     render: (comp: Component, parent: HTMLElement) => {
-        let range = document.createRange()
-        range.setStart(parent, 0)
-        comp.flush(range)
+        comp.flush(parent)
     },
 
     createElement: function (component: any, props: {[index: string]: any} | undefined, ...children: any): Component {
