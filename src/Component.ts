@@ -1,4 +1,3 @@
-import { MyReact } from "./MyReact";
 import * as ReactEvent from "./ReactEvent"
 
 export interface VNode{
@@ -8,22 +7,37 @@ export interface VNode{
     children: Component[];
 }
 
-export interface Component {
-    render() : Component;
+export type RenderComponent = Component | null | undefined
+
+export interface Component  {
+    render() : RenderComponent;
     flush(parentNode: Node) : Node;
-    update(): void;
+    id: number;
+    children: Component[];
+    root: VNode;
+    node: Node;
+}
+
+var componentId: number = 0;
+function getNextComponentId(): number{
+    return ++componentId
 }
 
 export class TextWrapper implements Component{
     root: VNode;
     node: Node;
     parentNode: Node;
+    rendered: boolean = false
+    id: number = 0
+    children: [];
     constructor(content: string){
         this.root = {
             type: "#text",
             content: content,
             children: []
         }
+
+        this.id = getNextComponentId()
     }
 
     flush(parentNode: Node) :Node{
@@ -44,7 +58,7 @@ export class TextWrapper implements Component{
         this.flush(this.parentNode)
     }
 
-    render(): Component {
+    render(): RenderComponent {
         return this
     }
 }
@@ -53,8 +67,15 @@ export class ElementWrapper implements Component {
     root: VNode;
     node: Node;
     parentNode: Node;
-    state: {[index: string]: any};
-    constructor(type: string, props: {[index: string]: string} | undefined, children: Component[]){
+    rendered: boolean = false;
+    id: number = 0
+    children: []
+
+    componentWillUnmount?(): void;
+    componentDidUpdate?(): void;
+    componentDidMount?(): void;
+
+    constructor(type: string, props: any, children: Component[]){
         this.root = {
             type: type,
             props: props,
@@ -68,29 +89,22 @@ export class ElementWrapper implements Component {
 
             this.root.children.push(child)
         }
-    }
 
-    update(): void {
-        this.flush(this.parentNode)
-    }
-
-    setState(state: {[index: string]: any}): void {
-        if (!this.state){
-            this.state = state
-        }
-        else{
-            for (let key in state){
-                this.state[key] = state[key]
-            }
-        }
-
-        this.update()
+        this.id = getNextComponentId()
     }
 
     flush(parentNode: Node): Node {
         this.parentNode = parentNode
         if (this.root.type === "#custom"){
             let ele = this.render()
+            if (ele == null){
+                if (this.node){
+                    this.parentNode.removeChild(this.node)
+                }
+
+                return;
+            }
+
             let node = ele.flush(parentNode)
             if (this.node){
                 this.parentNode.replaceChild(node, this.node)
@@ -111,7 +125,8 @@ export class ElementWrapper implements Component {
                     }
                     else if (key.match(/^on([\s\S]+)/)){
                         let event = key.substr(2).toLowerCase()
-                        ReactEvent.registerEvent(event, {node: node, callback: this.root.props[key]})
+                        ReactEvent.registerEvent(event, {node: node, callback: this.root.props[key], id: this.id})
+                        continue;
                     }
 
                     node.setAttribute(key, value)
@@ -136,16 +151,43 @@ export class ElementWrapper implements Component {
             this.node = node
         }
 
+
+        if (this.rendered){
+            if (this.componentDidUpdate){
+                this.componentDidUpdate()
+            }
+        }
+        else{
+            if (this.componentDidMount){
+                this.componentDidMount()
+            }
+        }
+
+        this.rendered = true
         return this.node
     }
 
-    render(): Component {
+    render(): RenderComponent {
         return this
     }
 }
 
-export class PureComponent extends ElementWrapper{
-    constructor(props: {[index: string]: any} | undefined, children: Component[]){
-        super("#custom", props, children)
-    } 
+export abstract class PureComponent<State = {}, Props = {}> extends ElementWrapper{
+    constructor(props: Props){
+        super("#custom", props, [])
+        this.props = props
+        this.state = Object.create({})
+    }
+
+    props: Props;
+    state: State;
+
+    setState(partial: any){
+        Object.assign(this.state, partial)
+        this.update()
+    }
+
+    update() {
+        this.flush(this.parentNode)
+    }
 }

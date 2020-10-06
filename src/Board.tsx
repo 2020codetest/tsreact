@@ -1,17 +1,17 @@
-import { Component, PureComponent} from "./Component";
+import { PureComponent, RenderComponent} from "./Component";
 import { MyReact } from "./MyReact";
 import { Square } from "./Square";
 
 export class Board extends PureComponent{
-    constructor(props: {[index: string]: any} | undefined, children: Component[]){
-        super(props, children)
-    }
-
-    renderSquare(i: number): Component{
+    renderSquare(i: number): RenderComponent{
         return (<Square value={i}/>);
     }
 
-    render() : Component{
+    componentDidMount() {
+      console.log("board component did mount", this.id)
+    }
+
+    render() : RenderComponent{
         const status = 'Next player: X';
         return (
           <div onClick={function click() {

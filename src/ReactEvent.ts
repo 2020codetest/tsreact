@@ -1,6 +1,7 @@
 var eventTable: {[index: string]: EventTarget[]} = {}
 
 export interface EventTarget{
+    id: number;
     node: Node;
     callback: (event: Event) => void;
 }
@@ -25,6 +26,21 @@ export function initEvents(){
             }
         }
     })
+}
+
+export function unregisterEvent(event: string, id: number){
+    if (event in eventTable){
+        let callbacks = eventTable[event]
+        let inx = 0
+        for (let callback of callbacks){
+            if (callback.id === id){
+                callbacks.splice(inx, 1)
+                break
+            }
+
+            ++inx
+        }
+    }
 }
 
 export function registerEvent(event: string, target: EventTarget){

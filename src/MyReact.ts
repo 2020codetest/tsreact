@@ -8,6 +8,10 @@ export const MyReact = {
     createElement: function (component: any, props: {[index: string]: any} | undefined, ...children: any): Component {
         let childArr = []
         for (let child of children){
+            if (child === null || child === undefined){
+                continue
+            }
+
             if (!((child instanceof ElementWrapper) || (child instanceof TextWrapper))){
                 child = new TextWrapper(`${child}`)
             }
@@ -20,7 +24,8 @@ export const MyReact = {
             return ele
         }
 
-        let comp = new component(props, childArr)
+        let comp = new component(props) as Component
+        comp.children = childArr
         return comp
     }
 }
