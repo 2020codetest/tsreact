@@ -17,6 +17,7 @@ export interface Component  {
     node: Node;
     unmounted: boolean;
     renderedComp?: Component;
+    hasEvent: boolean;
     componentWillUnmount?(): void;
     componentDidUpdate?(): void;
     componentDidMount?(): void;
@@ -34,6 +35,7 @@ export class TextWrapper implements Component{
     rendered: boolean = false
     unmounted: boolean = false
     id: number = 0
+    hasEvent: boolean = false;
     constructor(content: string){
         this.root = {
             type: "#text",
@@ -74,6 +76,7 @@ export class ElementWrapper implements Component {
     rendered: boolean = false;
     id: number = 0
     unmounted: boolean = false
+    hasEvent: boolean = false
     children: []
     renderedComp?: Component;
     componentWillUnmount?(): void;
@@ -98,23 +101,23 @@ export class ElementWrapper implements Component {
         this.id = getNextComponentId()
     }
 
-    collectChildren(root: VNode): Component[]{
-        let ret: Component[] = []
+    cleanUpResources(root: VNode): void{
         if (root.children && root.children.length){
-            ret = ret.concat(root.children)
             for (let child of root.children){
                 if (child.renderedComp){
-                    ret.push(child.renderedComp)
-                    ret = ret.concat(this.collectChildren(child.renderedComp.root))
+                    if (child.componentWillUnmount){
+                        child.componentWillUnmount()
+                    }
+
+                    ReactEvent.unregisterEvent(child.renderedComp.id)
+                    this.cleanUpResources(child.renderedComp.root)
                 }
                 else{
-                    ret = ret.concat(this.collectChildren(child.root))
+                    ReactEvent.unregisterEvent(child.id)
+                    this.cleanUpResources(child.root)
                 }
             }
         }
-
-        return ret
-
     }
 
     flush(parentNode: Node): Node {
@@ -133,19 +136,12 @@ export class ElementWrapper implements Component {
         this.parentNode = parentNode
         if (this.root.type === "#custom"){
             if (this.renderedComp){
-                let children = this.collectChildren(this.renderedComp.root)
-                for (let child of children){
-                    child.unmounted = true
-                    ReactEvent.unregisterEvent(child.id)
-                    if (child.componentWillUnmount){
-                        child.componentWillUnmount()
-                    }
-                }
+                this.cleanUpResources(this.renderedComp.root)
             }
 
-            let ele = this.render()
-            this.renderedComp = ele
-            if (ele == null){
+            // here you could perform the diff algorithm
+            this.renderedComp = this.render()
+            if (this.renderedComp == null){
                 if (this.node){
                     this.parentNode.removeChild(this.node)
                 }
@@ -153,7 +149,7 @@ export class ElementWrapper implements Component {
                 return;
             }
 
-            let node = ele.flush(parentNode)
+            let node = this.renderedComp.flush(parentNode)
             if (this.node){
                 this.parentNode.replaceChild(node, this.node)
             }
@@ -173,6 +169,7 @@ export class ElementWrapper implements Component {
                     }
                     else if (key.match(/^on([\s\S]+)/)){
                         let event = key.substr(2).toLowerCase()
+                        this.hasEvent = true
                         ReactEvent.registerEvent(event, {node: node, callback: this.root.props[key], id: this.id})
                         continue;
                     }
@@ -217,10 +214,22 @@ export abstract class PureComponent<State = {}, Props = {}> extends ElementWrapp
 
     props: Props;
     state: State;
+    stateQueue: any[] = []
+    promisedIssue: boolean = false
 
     setState(partial: any){
-        Object.assign(this.state, partial)
-        this.update()
+        this.stateQueue.push(partial)
+        if (!this.promisedIssue){
+            this.promisedIssue = true
+            Promise.resolve().then(() => {
+                for (let state of this.stateQueue){
+                    Object.assign(this.state, state)
+                }
+
+                this.update()
+                this.promisedIssue = false
+            })
+        }
     }
 
     update() {
