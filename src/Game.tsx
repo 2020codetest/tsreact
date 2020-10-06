@@ -38,7 +38,7 @@ export class Game extends PureComponent<GameStatus>{
               <Board />
             </div>
             <div className="game-info">
-              <div onClick={function restart(){_this.updateCheck()}}>null check</div>
+              <div onClick={this.updateCheck.bind(this)}>null check</div>
               {status}
             </div>
           </div>

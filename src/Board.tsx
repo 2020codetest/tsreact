@@ -2,17 +2,29 @@ import { PureComponent, RenderComponent} from "./Component";
 import { MyReact } from "./MyReact";
 import { Square } from "./Square";
 
-export class Board extends PureComponent{
+interface BoardState{
+  col: number;
+}
+export class Board extends PureComponent<BoardState>{
+  constructor(){
+    super({})
+    this.state = {
+      col: 3
+    }
+  }
     renderSquare(i: number): RenderComponent{
         return (<Square value={i}/>);
     }
 
     renderRow(i: number){
+      let col = this.state.col
+      let colList = []
+      for (let inx = 0; inx < col; ++inx){
+        colList.push(this.renderSquare(i * col + inx))
+      }
       return (
         <>
-          {this.renderSquare(i * 3)}
-          {this.renderSquare(i * 3 + 1)}
-          {this.renderSquare(i * 3 + 2)}
+          {colList}
         </>
       )
     }
@@ -24,10 +36,12 @@ export class Board extends PureComponent{
     render() : RenderComponent{
         const status = 'Next player: X';
         return (
-          <div onClick={function click() {
+          <div onClick={() => {
             console.log("buntton clicked")
           }}>
-            <div className="status">{status}</div>
+            <div className="status" onClick={() => {
+              this.setState({col: this.state.col == 3 ? 2: 3})
+            }}>{status}</div>
             <div className="board-row">
               {this.renderRow(0)}
             </div>

@@ -27,10 +27,9 @@ export class Square extends PureComponent<SquareState, SquareProps>{
             className += " red"
         }
 
-        let _this = this
-        return (<div className={className} onClick={function click(){
-            _this.setState({click: _this.state.click + 1})
-            _this.setState({click: _this.state.click + 2})
+        return (<div className={className} onClick={() => {
+            this.setState({click: this.state.click + 1})
+            this.setState({click: this.state.click + 2})
         }}>{this.root.props.value}</div>)
     };
 
