@@ -33,8 +33,8 @@ export class Square extends PureComponent<SquareState, SquareProps>{
         }}>{this.root.props.value}</div>)
     };
 
-    componentWillMount(): void{
-        console.log("square will mount", this.id)
+    componentWillUnmount(): void{
+        console.log("square will unmount", this.id)
     }
 
     componentDidMount(): void{

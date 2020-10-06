@@ -13,9 +13,13 @@ export interface Component  {
     render() : RenderComponent;
     flush(parentNode: Node) : Node;
     id: number;
-    children: Component[];
     root: VNode;
     node: Node;
+    unmounted: boolean;
+    renderedComp?: Component;
+    componentWillUnmount?(): void;
+    componentDidUpdate?(): void;
+    componentDidMount?(): void;
 }
 
 var componentId: number = 0;
@@ -28,8 +32,8 @@ export class TextWrapper implements Component{
     node: Node;
     parentNode: Node;
     rendered: boolean = false
+    unmounted: boolean = false
     id: number = 0
-    children: [];
     constructor(content: string){
         this.root = {
             type: "#text",
@@ -69,8 +73,9 @@ export class ElementWrapper implements Component {
     parentNode: Node;
     rendered: boolean = false;
     id: number = 0
+    unmounted: boolean = false
     children: []
-
+    renderedComp?: Component;
     componentWillUnmount?(): void;
     componentDidUpdate?(): void;
     componentDidMount?(): void;
@@ -93,10 +98,53 @@ export class ElementWrapper implements Component {
         this.id = getNextComponentId()
     }
 
+    collectChildren(root: VNode): Component[]{
+        let ret: Component[] = []
+        if (root.children && root.children.length){
+            ret = ret.concat(root.children)
+            for (let child of root.children){
+                if (child.renderedComp){
+                    ret.push(child.renderedComp)
+                    ret = ret.concat(this.collectChildren(child.renderedComp.root))
+                }
+                else{
+                    ret = ret.concat(this.collectChildren(child.root))
+                }
+            }
+        }
+
+        return ret
+
+    }
+
     flush(parentNode: Node): Node {
+        if (this.rendered){
+            if (this.componentDidUpdate){
+                this.componentDidUpdate()
+            }
+        }
+        else{
+            if (this.componentDidMount){
+                this.componentDidMount()
+            }
+        }
+
+        this.rendered = true
         this.parentNode = parentNode
         if (this.root.type === "#custom"){
+            if (this.renderedComp){
+                let children = this.collectChildren(this.renderedComp.root)
+                for (let child of children){
+                    child.unmounted = true
+                    ReactEvent.unregisterEvent(child.id)
+                    if (child.componentWillUnmount){
+                        child.componentWillUnmount()
+                    }
+                }
+            }
+
             let ele = this.render()
+            this.renderedComp = ele
             if (ele == null){
                 if (this.node){
                     this.parentNode.removeChild(this.node)
@@ -152,18 +200,6 @@ export class ElementWrapper implements Component {
         }
 
 
-        if (this.rendered){
-            if (this.componentDidUpdate){
-                this.componentDidUpdate()
-            }
-        }
-        else{
-            if (this.componentDidMount){
-                this.componentDidMount()
-            }
-        }
-
-        this.rendered = true
         return this.node
     }
 

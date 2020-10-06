@@ -25,7 +25,7 @@ export const MyReact = {
         }
 
         let comp = new component(props) as Component
-        comp.children = childArr
+        comp.root.children = childArr
         return comp
     }
 }

@@ -28,8 +28,8 @@ export function initEvents(){
     })
 }
 
-export function unregisterEvent(event: string, id: number){
-    if (event in eventTable){
+export function unregisterEvent(id: number){
+    for (let event in eventTable){
         let callbacks = eventTable[event]
         let inx = 0
         for (let callback of callbacks){
