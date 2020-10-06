@@ -7,6 +7,16 @@ export class Board extends PureComponent{
         return (<Square value={i}/>);
     }
 
+    renderRow(i: number){
+      return (
+        <>
+          {this.renderSquare(i * 3)}
+          {this.renderSquare(i * 3 + 1)}
+          {this.renderSquare(i * 3 + 2)}
+        </>
+      )
+    }
+
     componentDidMount() {
       console.log("board component did mount", this.id)
     }
@@ -19,19 +29,13 @@ export class Board extends PureComponent{
           }}>
             <div className="status">{status}</div>
             <div className="board-row">
-              {this.renderSquare(0)}
-              {this.renderSquare(1)}
-              {this.renderSquare(2)}
+              {this.renderRow(0)}
             </div>
             <div className="board-row">
-              {this.renderSquare(3)}
-              {this.renderSquare(4)}
-              {this.renderSquare(5)}
+              {this.renderRow(1)}
             </div>
             <div className="board-row">
-              {this.renderSquare(6)}
-              {this.renderSquare(7)}
-              {this.renderSquare(8)}
+              {this.renderRow(2)}
             </div>
           </div>
         );

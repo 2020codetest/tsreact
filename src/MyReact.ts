@@ -5,10 +5,15 @@ export const MyReact = {
         comp.flush(parent)
     },
 
-    createElement: function (component: any, props: {[index: string]: any} | undefined, ...children: any): Component {
+    createElement: function (component: any, props: {[index: string]: any} | undefined, ...children: any): Component | Component[] {
         let childArr = []
         for (let child of children){
             if (child === null || child === undefined){
+                continue
+            }
+
+            if (Array.isArray(child)){
+                childArr = childArr.concat(child)
                 continue
             }
 
@@ -16,16 +21,24 @@ export const MyReact = {
                 child = new TextWrapper(`${child}`)
             }
 
+
             childArr.push(child)
         }
 
         if (typeof component === 'string'){
-            let ele = new ElementWrapper(component, props, childArr)
-            return ele
+            if (component === "#fragment"){
+                return childArr
+            }
+            else{
+                let ele = new ElementWrapper(component, props, childArr)
+                return ele
+            }
         }
 
         let comp = new component(props) as Component
         comp.root.children = childArr
         return comp
-    }
+    },
+
+    Fragment: "#fragment"
 }

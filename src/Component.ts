@@ -217,7 +217,7 @@ export abstract class PureComponent<State = {}, Props = {}> extends ElementWrapp
     stateQueue: any[] = []
     promisedIssue: boolean = false
 
-    setState(partial: any){
+    setState<K extends keyof State>(partial: Pick<State, K> | State){
         this.stateQueue.push(partial)
         if (!this.promisedIssue){
             this.promisedIssue = true
@@ -226,6 +226,7 @@ export abstract class PureComponent<State = {}, Props = {}> extends ElementWrapp
                     Object.assign(this.state, state)
                 }
 
+                this.stateQueue.length = 0
                 this.update()
                 this.promisedIssue = false
             })
